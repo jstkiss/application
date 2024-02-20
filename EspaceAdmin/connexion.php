@@ -18,7 +18,6 @@ if(isset($_POST['valider'])){
         echo "Veuillez compléter tous les champs...";
     }
 }
-
 ?>
 
 <!DOCTYPE html>

@@ -1,43 +1,35 @@
 <?php
 session_start();
-$bdd = new PDO('mysql:host=localhost;dbname=test', 'root' , '');
+$bdd = new PDO('mysql:host=localhost;dbname=test', 'root', '');
 
-if(isset($_POST['envoie'])) {
+if(isset($_POST['connexion'])) {
     if(!empty($_POST['pseudo']) && !empty($_POST['mdp'])) {
         $pseudo = htmlspecialchars($_POST['pseudo']);
-        $mdp = sha1($_POST['mdp']); // À des fins d'apprentissage uniquement, préférez bcrypt ou Argon2 pour un usage réel.
+        $mdp = $_POST['mdp'];
 
-        $recupUser = $bdd->prepare('SELECT * FROM users WHERE pseudo = ? AND mdp = ?');
-        $recupUser->execute([$pseudo, $mdp]);
+        $req = $bdd->prepare('SELECT id, pseudo, mdp FROM users WHERE pseudo = ?');
+        $req->execute([$pseudo]);
+        $user = $req->fetch();
 
-        if($recupUser->rowCount() > 0){
-            // L'utilisateur existe dans la base de données
-            $userData = $recupUser->fetch();
+        if($user && password_verify($mdp, $user['mdp'])) {
+            // Succès de l'authentification, initialisation de la session
+            $_SESSION['pseudo'] = $user['pseudo'];
+            $_SESSION['id'] = $user['id'];
 
-            $_SESSION['pseudo'] = $pseudo;
-            $_SESSION['mdp'] = $mdp;
-            $_SESSION['id'] = $userData['id'];
-            
-            // Définition des cookies
-            setcookie('pseudo', $pseudo, time() + (86400 * 30), "/"); // Valide pendant 30 jours
-            setcookie('mdp', $mdp, time() + (86400 * 30), "/"); // Valide pendant 30 jours
-            echo "Vous êtes bien connecté avec vos accès : ".$_COOKIE['pseudo'].' - '.$_COOKIE['mdp'];
-            
-            header('location: ../index.php'); // Redirection après une authentification réussie
-            exit; // Arrête l'exécution du script après la redirection
-        }else {
-            // Évitez de donner des informations spécifiques sur l'échec de l'authentification
-            echo "Identifiant ou mot de passe incorrect.";
+            // Définition du cookie pour le pseudo de l'utilisateur
+            setcookie("pseudo", $user['pseudo'], time() + (86400 * 30), "/");
+            header('location: ../index.php');
+            exit;
+        } else {
+            // Identifiant ou mot de passe incorrect
+            $error = "Identifiant ou mot de passe incorrect";
         }
-
-    }else {
-        echo "Veuillez compléter tous les champs";
+    } else {
+        // Tous les champs n'ont pas été remplis
+        $error = "Veuillez compléter tous les champs";
     }
 }
 ?>
-
-
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -45,21 +37,25 @@ if(isset($_POST['envoie'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
-    <title>Document</title>
+    <title>Connexion</title>
 </head>
 <body>
-<form action="" method="post">
-    <div>
-        <label for="pseudo">Pseudo :</label>
-        <input type="text" name="pseudo" id="pseudo" required>
-    </div>
-    <div>
-        <label for="mdp">Mot de passe :</label>
-        <input type="password" name="mdp" id="mdp" autocomplete="off" required>
-    </div>
-    <div>
-        <input type="submit" name="envoie" value="Se connecter">
-    </div>
-</form>
-
+    <h1>Connexion</h1>
+    <?php if(isset($error)): ?>
+        <p><?php echo $error; ?></p>
+    <?php endif; ?>
+    <form action="" method="post">
+        <div>
+            <label for="pseudo">Pseudo :</label>
+            <input type="text" name="pseudo" id="pseudo" required>
+        </div>
+        <div>
+            <label for="mdp">Mot de passe :</label>
+            <input type="password" name="mdp" id="mdp" autocomplete="off" required>
+        </div>
+        <div>
+            <input type="submit" name="connexion" value="Se connecter">
+        </div>
+    </form>
+</body>
 </html>

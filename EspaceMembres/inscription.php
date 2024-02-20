@@ -1,33 +1,31 @@
 <?php
 session_start();
-$bdd = new PDO('mysql:host=localhost;dbname=test', 'root' , '');
-if(isset($_POST['envoie'])) {
-    if(!empty($_POST['pseudo']) AND !empty($_POST['mdp'])) {
+$bdd = new PDO('mysql:host=localhost;dbname=test', 'root', '');
+
+if (isset($_POST['envoie'])) {
+    if (!empty($_POST['pseudo']) && !empty($_POST['mdp'])) {
         $pseudo = htmlspecialchars($_POST['pseudo']);
-        $mdp = sha1($_POST['mdp']);
-        $insertUser = $bdd->prepare('INSERT INTO  users(pseudo, mdp)VALUES(?, ?)');
-        $insertUser->execute([$pseudo, $mdp]);
+        $mdp = password_hash($_POST['mdp'], PASSWORD_DEFAULT); 
+        $token = uniqid();
 
-        $recupUser = $bdd->prepare("SELECT * FROM users WHERE pseudo = ?");
-        $recupUser->execute([$pseudo]);
-        
-    if ($recupUser->rowCount() > 0) {
-        // L'utilisateur existe dans la base de données
-        $userData = $recupUser->fetch(); // Récupère les données de l'utilisateur
-    
-        // Stocke les données de l'utilisateur dans la session
-        $_SESSION['pseudo'] = $pseudo;
-        $_SESSION['mdp'] = $mdp;
-        $_SESSION['id'] = $userData['id'];
-        header('location: ../index.html');
-    }
+// Insertion de l'utilisateur dans la base de données avec le jeton
+$insertUser = $bdd->prepare('INSERT INTO users(pseudo, mdp, token) VALUES(?, ?, ?)');
+$insertUser->execute([$pseudo, $mdp, $token]);
 
-    }else {
+// Stockage du jeton dans un cookie
+setcookie('token', $token, time() + (86400 * 30), "/");
+header('location: ../index.html');
+    } else {
         echo "Veuillez compléter tous les champs";
     }
 }
-
 ?>
+
+
+
+
+
+
 
 
 <!DOCTYPE html>
@@ -39,7 +37,7 @@ if(isset($_POST['envoie'])) {
     <title>Document</title>
 </head>
 <body>
-    <form action="" method="post" class="justify-center">
+    <form action="" method="POST" class="justify-center">
     <input type="text" name="pseudo" autocomplete="off">
     <br>
     <input type="password" name="mdp" id="" autocomplete="off">
